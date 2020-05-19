@@ -1,0 +1,39 @@
+version: "3.7"
+
+services:
+  {{.Name}}:
+    container_name: {{.Name}}
+    build:
+      context: ..
+      dockerfile: ./deploy/Dockerfile
+    working_dir: /go/src/{{.Name}}
+    entrypoint: go run ./cmd/{{.Name}}/{{.Name}}.go
+    environment:
+      - APP_ENV=local
+    stop_signal: SIGINT
+    volumes:
+      - ./..:/go/src/{{.Name}}
+    ports:
+      - 8080:8080
+    networks:
+      - {{.Name}}-net
+
+  tests:
+    build:
+      context: ..
+      dockerfile: ./deploy/Dockerfile
+    working_dir: /var/www/{{.Name}}
+    command: go test -v ./...
+    volumes:
+      - ./..:/var/www/{{.Name}}
+
+  linter:
+    image: golangci/golangci-lint:latest
+    working_dir: /app
+    command: golangci-lint run -v
+    volumes:
+      - ./..:/app
+
+networks:
+  {{.Name}}-net:
+    driver: bridge
