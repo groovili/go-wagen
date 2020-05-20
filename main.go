@@ -217,10 +217,8 @@ func main() {
 
 	printMsg(fmt.Sprintf("Creating %s application..", app))
 
-	wd, _ := os.Getwd()
-
 	s := structure{
-		Box: packr.New("tplBox", fmt.Sprintf("%s%s%s", wd, sep, "templates")),
+		Box: packr.New("tplBox", "./templates"),
 		App: app,
 		Files: map[string]string{
 			fmt.Sprintf("%s%s", app.Path, "go.mod"):   "go.mod.tmpl",
