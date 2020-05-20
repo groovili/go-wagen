@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strings"
 	"text/template"
+
+	packr "github.com/gobuffalo/packr/v2"
 )
 
 const permMode = 0764
@@ -19,12 +21,17 @@ type application struct {
 	Name string
 }
 
+func (a *application) String() string {
+	return a.Name
+}
+
 type dir struct {
 	Name  string
 	Files map[string]string // [name]template
 }
 
 type structure struct {
+	Box         *packr.Box
 	App         *application
 	Files       map[string]string // [name]template
 	Directories []*dir
@@ -32,20 +39,54 @@ type structure struct {
 
 func (s *structure) create() {
 	for file, temp := range s.Files {
-		fileFromTemplate(file, temp, s.App)
+		s.fileFromTemplate(file, temp, s.App)
 	}
 
 	for _, d := range s.Directories {
-		makeDir(d.Name)
+		s.makeDir(d.Name)
 
 		for file, temp := range d.Files {
-			fileFromTemplate(file, temp, s.App)
+			s.fileFromTemplate(file, temp, s.App)
 		}
 	}
 }
 
-func (a *application) String() string {
-	return a.Name
+func (s *structure) makeDir(path string) {
+	err := os.MkdirAll(path, permMode)
+	if err != nil {
+		printErr(err.Error())
+		os.Exit(1)
+	}
+
+	printMsg(fmt.Sprintf("Created %s", path))
+}
+
+func (s *structure) fileFromTemplate(filePath, templatePath string, args interface{}) {
+	f, err := os.Create(filePath)
+	if err != nil {
+		printErr(err.Error())
+		os.Exit(1)
+	}
+	defer f.Close()
+
+	txt, err := s.Box.FindString(templatePath)
+	if err != nil {
+		printErr(err.Error())
+		os.Exit(1)
+	}
+
+	tpl, err := template.New(path.Base(templatePath)).Parse(txt)
+	if err != nil {
+		printErr(err.Error())
+		os.Exit(1)
+	}
+
+	if err = tpl.Execute(f, args); err != nil {
+		printErr(err.Error())
+		os.Exit(1)
+	}
+
+	printMsg(fmt.Sprintf("Created %s", filePath))
 }
 
 type actionFunc func(answer string) error
@@ -83,38 +124,6 @@ func userAction(a *action) error {
 	}
 
 	return nil
-}
-
-func makeDir(path string) {
-	err := os.MkdirAll(path, permMode)
-	if err != nil {
-		printErr(err.Error())
-		os.Exit(1)
-	}
-
-	printMsg(fmt.Sprintf("Created %s", path))
-}
-
-func fileFromTemplate(filePath, templatePath string, args interface{}) {
-	f, err := os.Create(filePath)
-	if err != nil {
-		printErr(err.Error())
-		os.Exit(1)
-	}
-	defer f.Close()
-
-	tpl, err := template.New(path.Base(templatePath)).ParseFiles(templatePath)
-	if err != nil {
-		printErr(err.Error())
-		os.Exit(1)
-	}
-	err = tpl.Execute(f, args)
-	if err != nil {
-		printErr(err.Error())
-		os.Exit(1)
-	}
-
-	printMsg(fmt.Sprintf("Created %s", filePath))
 }
 
 func main() {
@@ -211,10 +220,11 @@ func main() {
 	wd, _ := os.Getwd()
 
 	s := structure{
+		Box: packr.New("tplBox", fmt.Sprintf("%s%s%s", wd, sep, "templates")),
 		App: app,
 		Files: map[string]string{
-			fmt.Sprintf("%s%s", app.Path, "go.mod"):   fmt.Sprintf("%s%s%s%s%s", wd, sep, "templates", sep, "go.mod"),
-			fmt.Sprintf("%s%s", app.Path, "Makefile"): fmt.Sprintf("%s%s%s%s%s", wd, sep, "templates", sep, "Makefile"),
+			fmt.Sprintf("%s%s", app.Path, "go.mod"):   "go.mod.tmpl",
+			fmt.Sprintf("%s%s", app.Path, "Makefile"): "Makefile.tmpl",
 		},
 		Directories: make([]*dir, 0),
 	}
@@ -222,24 +232,24 @@ func main() {
 	s.Directories = append(s.Directories, &dir{
 		Name: fmt.Sprintf("%s%s%s%s", app.Path, "cmd", sep, app),
 		Files: map[string]string{
-			fmt.Sprintf("%s%s%s%s%s%s", app.Path, "cmd", sep, app, sep, fmt.Sprintf("%s.go", app)): fmt.Sprintf("%s%s%s%s%s", wd, sep, "templates", sep, "app.go"),
+			fmt.Sprintf("%s%s%s%s%s%s", app.Path, "cmd", sep, app, sep, fmt.Sprintf("%s.go", app)): "app.go.tmpl",
 		},
 	})
 
 	s.Directories = append(s.Directories, &dir{
 		Name: fmt.Sprintf("%s%s", app.Path, "config"),
 		Files: map[string]string{
-			fmt.Sprintf("%s%s%s%s", app.Path, "config", sep, "app.local.yml"): fmt.Sprintf("%s%s%s%s%s", wd, sep, "templates", sep, "config.yml"),
-			fmt.Sprintf("%s%s%s%s", app.Path, "config", sep, "app.dev.yml"):   fmt.Sprintf("%s%s%s%s%s", wd, sep, "templates", sep, "config.yml"),
-			fmt.Sprintf("%s%s%s%s", app.Path, "config", sep, "app.yml"):       fmt.Sprintf("%s%s%s%s%s", wd, sep, "templates", sep, "config.yml"),
+			fmt.Sprintf("%s%s%s%s", app.Path, "config", sep, "app.local.yml"): "config.yml.tmpl",
+			fmt.Sprintf("%s%s%s%s", app.Path, "config", sep, "app.dev.yml"):   "config.yml.tmpl",
+			fmt.Sprintf("%s%s%s%s", app.Path, "config", sep, "app.yml"):       "config.yml.tmpl",
 		},
 	})
 
 	s.Directories = append(s.Directories, &dir{
 		Name: fmt.Sprintf("%s%s", app.Path, "deploy"),
 		Files: map[string]string{
-			fmt.Sprintf("%s%s%s%s", app.Path, "deploy", sep, "Dockerfile"):         fmt.Sprintf("%s%s%s%s%s", wd, sep, "templates", sep, "Dockerfile"),
-			fmt.Sprintf("%s%s%s%s", app.Path, "deploy", sep, "docker-compose.yml"): fmt.Sprintf("%s%s%s%s%s", wd, sep, "templates", sep, "docker-compose.yml"),
+			fmt.Sprintf("%s%s%s%s", app.Path, "deploy", sep, "Dockerfile"):         "Dockerfile.tmpl",
+			fmt.Sprintf("%s%s%s%s", app.Path, "deploy", sep, "docker-compose.yml"): "docker-compose.yml.tmpl",
 		},
 	})
 
