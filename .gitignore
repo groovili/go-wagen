@@ -17,3 +17,5 @@
 .idea
 
 go-wagen
+packrd
+*packr.go

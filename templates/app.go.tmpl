@@ -7,11 +7,15 @@ import (
 	"os/signal"
 	"syscall"
 
-	log "github.com/sirupsen/logrus"
+	log "{{.LoggerPackage}}"
 	"github.com/spf13/viper"
+
+	"{{.Name}}/server/handlers"
 )
 
 const keyENV = "APP_ENV"
+
+var version = "dev"
 
 func readConfig(env string) {
 	if len(env) > 0 {
@@ -22,7 +26,7 @@ func readConfig(env string) {
 	viper.SetConfigType("yaml")
 
 	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalf("Failed to read config: %v", err)
+		panic(err)
 	}
 }
 
@@ -32,32 +36,42 @@ func main() {
 
 	readConfig(env)
 
-	log.Infof("Starting %s on %s env..", app, env)
+    {{if eq .Logger "logrus" }}logger := log.New(){{else}}logger, err := log.NewDevelopment()
+    if err != nil {
+        panic(err)
+    }{{end}}
+
+	logger.Info(fmt.Sprintf("Starting %s on %s env..", app, env))
 
 	host, port := viper.GetString("host"), viper.GetString("port")
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGINT)
 
-	httpErr := make(chan error, 1)
+	ping := handlers.NewPing(logger, version)
+    http.HandleFunc("/ping", ping.Handler)
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte("Hello World!"))
 		if err != nil {
+			logger.Warn(err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	})
+
+	httpErr := make(chan error, 1)
 	go func() {
-		log.Infof("Started server on %s:%s..", host, port)
+		logger.Info(fmt.Sprintf("Started server on %s:%s..", host, port))
 		httpErr <- http.ListenAndServe(fmt.Sprintf("%s:%s", host, port), nil)
 	}()
 
 	select {
-	case err := <-httpErr:
-		log.Error(err)
-	case <-stop:
-		log.Info("Stopped via signal")
-	}
+    case err := <-httpErr:
+        logger.Error(err.Error())
+    case <-stop:
+        logger.Info("Stopped via signal")
+    }
 
-	log.Infof("Stopping %s..", app)
+    logger.Info(fmt.Sprintf("Stopping %s..", app))
 }

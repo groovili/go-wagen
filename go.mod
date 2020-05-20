@@ -3,6 +3,7 @@ module github.com/groovili/go-wagen
 go 1.14
 
 require (
+	github.com/fatih/color v1.9.0
 	github.com/gobuffalo/packr/v2 v2.8.0
 	github.com/karrick/godirwalk v1.15.6 // indirect
 	github.com/rogpeppe/go-internal v1.6.0 // indirect
