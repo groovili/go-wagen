@@ -228,6 +228,11 @@ func main() {
 
 	s.Directories = append(s.Directories, &dir{
 		Name: fmt.Sprintf("%s%s", app.Path, "config"),
+		Files: map[string]string{
+			fmt.Sprintf("%s%s%s%s", app.Path, "config", sep, "app.local.yml"): fmt.Sprintf("%s%s%s%s%s", wd, sep, "templates", sep, "config.yml"),
+			fmt.Sprintf("%s%s%s%s", app.Path, "config", sep, "app.dev.yml"):   fmt.Sprintf("%s%s%s%s%s", wd, sep, "templates", sep, "config.yml"),
+			fmt.Sprintf("%s%s%s%s", app.Path, "config", sep, "app.yml"):       fmt.Sprintf("%s%s%s%s%s", wd, sep, "templates", sep, "config.yml"),
+		},
 	})
 
 	s.Directories = append(s.Directories, &dir{
@@ -244,6 +249,10 @@ func main() {
 
 	s.Directories = append(s.Directories, &dir{
 		Name: fmt.Sprintf("%s%s", app.Path, "vendor"),
+	})
+
+	s.Directories = append(s.Directories, &dir{
+		Name: fmt.Sprintf("%s%s", app.Path, "storage"),
 	})
 
 	s.Directories = append(s.Directories, &dir{
