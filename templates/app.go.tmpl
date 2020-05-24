@@ -7,8 +7,9 @@ import (
 	"os/signal"
 	"syscall"
 
+    "github.com/spf13/viper"
 	log "{{.LoggerPackage}}"
-	"github.com/spf13/viper"
+	router "{{.RouterPackage}}"
 
 	"{{.Name}}/server/handlers"
 )
@@ -48,22 +49,18 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGINT)
 
-	ping := handlers.NewPing(logger, version)
-    http.HandleFunc("/ping", ping.Handler)
+	r := router.NewRouter()
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write([]byte("Hello World!"))
-		if err != nil {
-			logger.Warn(err.Error())
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	})
+	ping := handlers.NewPing(logger, version)
+    r.{{ if eq .Router "mux"}}HandleFunc{{else}}Get{{end}}("/ping", ping.Handler)
+
+    hello := handlers.NewHello(logger)
+	r.{{ if eq .Router "mux"}}HandleFunc{{else}}Get{{end}}("/", hello.Handler)
 
 	httpErr := make(chan error, 1)
 	go func() {
 		logger.Info(fmt.Sprintf("Started server on %s:%s..", host, port))
-		httpErr <- http.ListenAndServe(fmt.Sprintf("%s:%s", host, port), nil)
+		httpErr <- http.ListenAndServe(fmt.Sprintf("%s:%s", host, port), r)
 	}()
 
 	select {

@@ -65,7 +65,8 @@ func createStructure(app *application) {
 	s.Directories = append(s.Directories, &dir{
 		Name: fmt.Sprintf("%s%s%s%s", app.Path, "server", sep, "handlers"),
 		Files: map[string]string{
-			fmt.Sprintf("%s%s%s%s%s%s", app.Path, "server", sep, "handlers", sep, "ping.go"): "ping.go.tmpl",
+			fmt.Sprintf("%s%s%s%s%s%s", app.Path, "server", sep, "handlers", sep, "ping.go"):  "ping.go.tmpl",
+			fmt.Sprintf("%s%s%s%s%s%s", app.Path, "server", sep, "handlers", sep, "hello.go"): "hello.go.tmpl",
 		},
 	})
 
@@ -166,7 +167,7 @@ func main() {
 	}
 
 	err = userAction(&action{
-		Question: "Select logger: \r\n[1]: github.com/Sirupsen/logrus\r\n[2]: github.com/uber-go/zap",
+		Question: "Select logger:\r\n[1]: github.com/Sirupsen/logrus\r\n[2]: github.com/uber-go/zap",
 		Validate: func(answer string) error {
 			i, err := strconv.Atoi(answer)
 			if err != nil {
@@ -192,6 +193,39 @@ func main() {
 			case 2:
 				app.Logger = "zap"
 				app.LoggerPackage = "go.uber.org/zap"
+			}
+
+			return nil
+		},
+	})
+
+	err = userAction(&action{
+		Question: "Select router:\r\n[1]: github.com/gorilla/mux\r\n[2]: github.com/go-chi/chi",
+		Validate: func(answer string) error {
+			i, err := strconv.Atoi(answer)
+			if err != nil {
+				return err
+			}
+
+			if i != 1 && i != 2 {
+				return errors.New("Invalid choice")
+			}
+
+			return nil
+		},
+		Action: func(answer string) error {
+			i, err := strconv.Atoi(answer)
+			if err != nil {
+				return err
+			}
+
+			switch i {
+			case 1:
+				app.Router = "mux"
+				app.RouterPackage = "github.com/gorilla/mux"
+			case 2:
+				app.Router = "chi"
+				app.RouterPackage = "github.com/go-chi/chi"
 			}
 
 			return nil

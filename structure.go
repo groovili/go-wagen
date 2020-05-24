@@ -18,6 +18,8 @@ type application struct {
 	Name          string
 	Logger        string
 	LoggerPackage string
+	Router        string
+	RouterPackage string
 }
 
 func (a *application) String() string {
