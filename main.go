@@ -1,124 +1,85 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
-	"text/template"
+
+	packr "github.com/gobuffalo/packr/v2"
 )
 
-const permMode = 0764
-
-type application struct {
-	Path string
-	Name string
-}
-
-type dir struct {
-	Name  string
-	Files map[string]string // [name]template
-}
-
-type structure struct {
-	App         *application
-	Files       map[string]string // [name]template
-	Directories []*dir
-}
-
-func (s *structure) create() {
-	for file, temp := range s.Files {
-		fileFromTemplate(file, temp, s.App)
+func createStructure(app *application) {
+	s := structure{
+		Box: packr.New("tplBox", "./templates"),
+		App: app,
+		Files: map[string]string{
+			fmt.Sprintf("%s%s", app.Path, "go.mod"):   "go.mod.tmpl",
+			fmt.Sprintf("%s%s", app.Path, "Makefile"): "Makefile.tmpl",
+		},
+		Directories: make([]*dir, 0),
 	}
 
-	for _, d := range s.Directories {
-		makeDir(d.Name)
+	sep := string(os.PathSeparator)
 
-		for file, temp := range d.Files {
-			fileFromTemplate(file, temp, s.App)
-		}
-	}
-}
+	s.Directories = append(s.Directories, &dir{
+		Name: fmt.Sprintf("%s%s%s%s", app.Path, "cmd", sep, app),
+		Files: map[string]string{
+			fmt.Sprintf("%s%s%s%s%s%s", app.Path, "cmd", sep, app, sep, fmt.Sprintf("%s.go", app)): "app.go.tmpl",
+		},
+	})
 
-func (a *application) String() string {
-	return a.Name
-}
+	s.Directories = append(s.Directories, &dir{
+		Name: fmt.Sprintf("%s%s", app.Path, "config"),
+		Files: map[string]string{
+			fmt.Sprintf("%s%s%s%s", app.Path, "config", sep, "app.local.yml"): "config.yml.tmpl",
+			fmt.Sprintf("%s%s%s%s", app.Path, "config", sep, "app.dev.yml"):   "config.yml.tmpl",
+			fmt.Sprintf("%s%s%s%s", app.Path, "config", sep, "app.yml"):       "config.yml.tmpl",
+		},
+	})
 
-type actionFunc func(answer string) error
+	s.Directories = append(s.Directories, &dir{
+		Name: fmt.Sprintf("%s%s", app.Path, "deploy"),
+		Files: map[string]string{
+			fmt.Sprintf("%s%s%s%s", app.Path, "deploy", sep, "Dockerfile"):         "Dockerfile.tmpl",
+			fmt.Sprintf("%s%s%s%s", app.Path, "deploy", sep, "docker-compose.yml"): "docker-compose.yml.tmpl",
+		},
+	})
 
-type action struct {
-	Question string
-	Validate actionFunc
-	Action   actionFunc
-}
+	s.Directories = append(s.Directories, &dir{
+		Name: fmt.Sprintf("%s%s", app.Path, "internal"),
+	})
 
-func printErr(msg string) {
-	fmt.Fprint(os.Stderr, fmt.Sprintf("%s\r\n", msg))
-}
+	s.Directories = append(s.Directories, &dir{
+		Name: fmt.Sprintf("%s%s", app.Path, "vendor"),
+	})
 
-func printMsg(msg string) {
-	fmt.Fprint(os.Stdin, fmt.Sprintf("%s\r\n", msg))
-}
+	s.Directories = append(s.Directories, &dir{
+		Name: fmt.Sprintf("%s%s", app.Path, "storage"),
+	})
 
-func userAction(a *action) error {
-	printMsg(a.Question)
+	s.Directories = append(s.Directories, &dir{
+		Name: fmt.Sprintf("%s%s%s%s", app.Path, "server", sep, "handlers"),
+		Files: map[string]string{
+			fmt.Sprintf("%s%s%s%s%s%s", app.Path, "server", sep, "handlers", sep, "ping.go"):  "ping.go.tmpl",
+			fmt.Sprintf("%s%s%s%s%s%s", app.Path, "server", sep, "handlers", sep, "hello.go"): "hello.go.tmpl",
+		},
+	})
 
-	scn := bufio.NewScanner(os.Stdin)
-	for scn.Scan() {
-		inp := scn.Text()
-		if err := a.Validate(inp); err != nil {
-			printErr(err.Error())
-			continue
-		}
+	s.Directories = append(s.Directories, &dir{
+		Name: fmt.Sprintf("%s%s%s%s", app.Path, "server", sep, "middleware"),
+	})
 
-		if err := a.Action(inp); err != nil {
-			return err
-		}
-
-		break
-	}
-
-	return nil
-}
-
-func makeDir(path string) {
-	err := os.MkdirAll(path, permMode)
-	if err != nil {
-		printErr(err.Error())
-		os.Exit(1)
-	}
-
-	printMsg(fmt.Sprintf("Created %s", path))
-}
-
-func fileFromTemplate(filePath, templatePath string, args interface{}) {
-	f, err := os.Create(filePath)
-	if err != nil {
-		printErr(err.Error())
-		os.Exit(1)
-	}
-	defer f.Close()
-
-	tpl, err := template.New(path.Base(templatePath)).ParseFiles(templatePath)
-	if err != nil {
-		printErr(err.Error())
-		os.Exit(1)
-	}
-	err = tpl.Execute(f, args)
-	if err != nil {
-		printErr(err.Error())
-		os.Exit(1)
-	}
-
-	printMsg(fmt.Sprintf("Created %s", filePath))
+	s.create()
 }
 
 func main() {
 	var pathToApp string
+
 	flag.StringVar(&pathToApp, "path", "", "Specify absolute path to app")
 	flag.Parse()
 
@@ -133,7 +94,6 @@ func main() {
 	}
 
 	pathToApp = path.Clean(pathToApp)
-	sep := string(os.PathSeparator)
 
 	stat, err := os.Stat(pathToApp)
 	if err != nil && !os.IsNotExist(err) {
@@ -164,7 +124,7 @@ func main() {
 			os.Exit(0)
 		}
 
-		printMsg(fmt.Sprintf("Created %s", pathToApp))
+		printSuccess(fmt.Sprintf("Created %s", pathToApp))
 
 		stat, err = os.Stat(pathToApp)
 		if err != nil {
@@ -179,7 +139,7 @@ func main() {
 	}
 
 	app := new(application)
-	app.Path = fmt.Sprintf("%s%s", pathToApp, sep)
+	app.Path = fmt.Sprintf("%s%s", pathToApp, string(os.PathSeparator))
 
 	err = userAction(&action{
 		Question: "Enter app name [a-z0-9_]:",
@@ -206,64 +166,75 @@ func main() {
 		os.Exit(1)
 	}
 
+	err = userAction(&action{
+		Question: "Select logger:\r\n[1]: github.com/Sirupsen/logrus\r\n[2]: github.com/uber-go/zap",
+		Validate: func(answer string) error {
+			i, err := strconv.Atoi(answer)
+			if err != nil {
+				return err
+			}
+
+			if i != 1 && i != 2 {
+				return errors.New("Invalid choice")
+			}
+
+			return nil
+		},
+		Action: func(answer string) error {
+			i, err := strconv.Atoi(answer)
+			if err != nil {
+				return err
+			}
+
+			switch i {
+			case 1:
+				app.Logger = "logrus"
+				app.LoggerPackage = "github.com/sirupsen/logrus"
+			case 2:
+				app.Logger = "zap"
+				app.LoggerPackage = "go.uber.org/zap"
+			}
+
+			return nil
+		},
+	})
+
+	err = userAction(&action{
+		Question: "Select router:\r\n[1]: github.com/gorilla/mux\r\n[2]: github.com/go-chi/chi",
+		Validate: func(answer string) error {
+			i, err := strconv.Atoi(answer)
+			if err != nil {
+				return err
+			}
+
+			if i != 1 && i != 2 {
+				return errors.New("Invalid choice")
+			}
+
+			return nil
+		},
+		Action: func(answer string) error {
+			i, err := strconv.Atoi(answer)
+			if err != nil {
+				return err
+			}
+
+			switch i {
+			case 1:
+				app.Router = "mux"
+				app.RouterPackage = "github.com/gorilla/mux"
+			case 2:
+				app.Router = "chi"
+				app.RouterPackage = "github.com/go-chi/chi"
+			}
+
+			return nil
+		},
+	})
+
 	printMsg(fmt.Sprintf("Creating %s application..", app))
 
-	wd, _ := os.Getwd()
+	createStructure(app)
 
-	s := structure{
-		App: app,
-		Files: map[string]string{
-			fmt.Sprintf("%s%s", app.Path, "go.mod"):   fmt.Sprintf("%s%s%s%s%s", wd, sep, "templates", sep, "go.mod"),
-			fmt.Sprintf("%s%s", app.Path, "Makefile"): fmt.Sprintf("%s%s%s%s%s", wd, sep, "templates", sep, "Makefile"),
-		},
-		Directories: make([]*dir, 0),
-	}
-
-	s.Directories = append(s.Directories, &dir{
-		Name: fmt.Sprintf("%s%s%s%s", app.Path, "cmd", sep, app),
-		Files: map[string]string{
-			fmt.Sprintf("%s%s%s%s%s%s", app.Path, "cmd", sep, app, sep, fmt.Sprintf("%s.go", app)): fmt.Sprintf("%s%s%s%s%s", wd, sep, "templates", sep, "app.go"),
-		},
-	})
-
-	s.Directories = append(s.Directories, &dir{
-		Name: fmt.Sprintf("%s%s", app.Path, "config"),
-		Files: map[string]string{
-			fmt.Sprintf("%s%s%s%s", app.Path, "config", sep, "app.local.yml"): fmt.Sprintf("%s%s%s%s%s", wd, sep, "templates", sep, "config.yml"),
-			fmt.Sprintf("%s%s%s%s", app.Path, "config", sep, "app.dev.yml"):   fmt.Sprintf("%s%s%s%s%s", wd, sep, "templates", sep, "config.yml"),
-			fmt.Sprintf("%s%s%s%s", app.Path, "config", sep, "app.yml"):       fmt.Sprintf("%s%s%s%s%s", wd, sep, "templates", sep, "config.yml"),
-		},
-	})
-
-	s.Directories = append(s.Directories, &dir{
-		Name: fmt.Sprintf("%s%s", app.Path, "deploy"),
-		Files: map[string]string{
-			fmt.Sprintf("%s%s%s%s", app.Path, "deploy", sep, "Dockerfile"):         fmt.Sprintf("%s%s%s%s%s", wd, sep, "templates", sep, "Dockerfile"),
-			fmt.Sprintf("%s%s%s%s", app.Path, "deploy", sep, "docker-compose.yml"): fmt.Sprintf("%s%s%s%s%s", wd, sep, "templates", sep, "docker-compose.yml"),
-		},
-	})
-
-	s.Directories = append(s.Directories, &dir{
-		Name: fmt.Sprintf("%s%s", app.Path, "internal"),
-	})
-
-	s.Directories = append(s.Directories, &dir{
-		Name: fmt.Sprintf("%s%s", app.Path, "vendor"),
-	})
-
-	s.Directories = append(s.Directories, &dir{
-		Name: fmt.Sprintf("%s%s", app.Path, "storage"),
-	})
-
-	s.Directories = append(s.Directories, &dir{
-		Name: fmt.Sprintf("%s%s%s%s%s%s", app.Path, "server", sep, "hadlers", sep, "rest"),
-	})
-
-	s.Directories = append(s.Directories, &dir{
-		Name: fmt.Sprintf("%s%s%s%s", app.Path, "server", sep, "middleware"),
-	})
-
-	s.create()
-
-	printMsg("Success!")
+	printSuccess("Success!")
 }

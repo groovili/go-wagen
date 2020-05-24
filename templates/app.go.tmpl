@@ -1,0 +1,74 @@
+package main
+
+import (
+	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+
+    "github.com/spf13/viper"
+	log "{{.LoggerPackage}}"
+	router "{{.RouterPackage}}"
+
+	"{{.Name}}/server/handlers"
+)
+
+const keyENV = "APP_ENV"
+
+var version = "dev"
+
+func readConfig(env string) {
+	if len(env) > 0 {
+		env = fmt.Sprintf(".%s", env)
+	}
+
+	viper.SetConfigFile(fmt.Sprintf("./config/app%s.yml", env))
+	viper.SetConfigType("yaml")
+
+	if err := viper.ReadInConfig(); err != nil {
+		panic(err)
+	}
+}
+
+func main() {
+	app := "{{.Name}}"
+	env := os.Getenv(keyENV)
+
+	readConfig(env)
+
+    {{if eq .Logger "logrus" }}logger := log.New(){{else}}logger, err := log.NewDevelopment()
+    if err != nil {
+        panic(err)
+    }{{end}}
+
+	logger.Info(fmt.Sprintf("Starting %s on %s env..", app, env))
+
+	host, port := viper.GetString("host"), viper.GetString("port")
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGINT)
+
+	r := router.NewRouter()
+
+	ping := handlers.NewPing(logger, version)
+    r.{{ if eq .Router "mux"}}HandleFunc{{else}}Get{{end}}("/ping", ping.Handler)
+
+    hello := handlers.NewHello(logger)
+	r.{{ if eq .Router "mux"}}HandleFunc{{else}}Get{{end}}("/", hello.Handler)
+
+	httpErr := make(chan error, 1)
+	go func() {
+		logger.Info(fmt.Sprintf("Started server on %s:%s..", host, port))
+		httpErr <- http.ListenAndServe(fmt.Sprintf("%s:%s", host, port), r)
+	}()
+
+	select {
+    case err := <-httpErr:
+        logger.Error(err.Error())
+    case <-stop:
+        logger.Info("Stopped via signal")
+    }
+
+    logger.Info(fmt.Sprintf("Stopping %s..", app))
+}
