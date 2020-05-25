@@ -12,6 +12,7 @@ import (
 	router "{{.RouterPackage}}"
 
 	"{{.Name}}/server/handlers"
+	"{{.Name}}/server/middleware"
 )
 
 const keyENV = "APP_ENV"
@@ -50,6 +51,9 @@ func main() {
 	signal.Notify(stop, os.Interrupt, syscall.SIGINT)
 
 	r := router.NewRouter()
+
+	lm := middleware.NewLog(logger, true)
+	r.Use(lm.Handler)
 
 	ping := handlers.NewPing(logger, version)
     r.{{ if eq .Router "mux"}}HandleFunc{{else}}Get{{end}}("/ping", ping.Handler)

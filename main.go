@@ -72,6 +72,9 @@ func createStructure(app *application) {
 
 	s.Directories = append(s.Directories, &dir{
 		Name: fmt.Sprintf("%s%s%s%s", app.Path, "server", sep, "middleware"),
+		Files: map[string]string{
+			fmt.Sprintf("%s%s%s%s%s%s", app.Path, "server", sep, "middleware", sep, "log.go"): "log.go.tmpl",
+		},
 	})
 
 	s.create()
