@@ -3,7 +3,11 @@
 
 Single binary **web application generator** for Go. 
 
-**Creates project boilerplate** and gives the ability to focus on the implementation of app functionality.
+**Creates boilerplate** and does routine on a project start.
+
+Less than in a minute you've got simple, clean and dockerized app:
+
+[![asciicast](https://asciinema.org/a/334826.svg)](https://asciinema.org/a/334826)
 
 #### Generates:
  * project layout, according to community best practices
@@ -15,10 +19,10 @@ Single binary **web application generator** for Go.
  * routing with [gorilla/mux](https://github.com/gorilla/mux) or [chi](github.com/go-chi/chi)
  * default health check, http handler and logger middleware
  
- **go-wagen is a starter pack** for typical web application. 
+ **go-wagen is a starter pack** for typical web application in Golang. 
  
  It doesn't aim to generalize the whole project workflow, push framework, or architecture.
- Consists of framework-agnostic components that are common in most of the applications.
+ Consists of framework-agnostic components that are very common.
  
  All contributions, issues, requests or feedback are warmly welcome.
  
@@ -26,22 +30,18 @@ Single binary **web application generator** for Go.
  
  Install pre-built binary on [releases page](https://github.com/groovili/go-wagen/releases):
  
- 1. `curl -LJO https://github.com/groovili/go-wagen/releases/download/latest/go-wagen-osx.tar.gz`
+ 1. `curl -LJO https://github.com/groovili/go-wagen/releases/download/v1.0.0/go-wagen-osx.tar.gz`
  2. `tar -f go-wagen-osx.tar.gz -x`
- 2. `./go-wagen --path=/absoule/path/to/project`
  
  or build from source code:
  
  1. `git clone https://github.com/groovili/go-wagen && cd go-wagen`
  2. `make install` - will install [packr](https://github.com/gobuffalo/packr) to wrap templates to binary
  3. `make build`
- 4. `./go-wagen --path=/absoule/path/to/project`
  
  Binary doesn't need to be in `$GOPATH` and works without any dependencies.
  
  ## Usage
- 
- Video instruction soon will be here.
  
  1. `./go-wagen --path=/absoule/path/to/project` and select dependencies
  2. `cd /absoule/path/to/project`
