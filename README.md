@@ -1,4 +1,6 @@
 # go-wagen
+[![Go Report Card](https://goreportcard.com/badge/github.com/groovili/go-wagen)](https://goreportcard.com/report/github.com/groovili/go-wagen)
+
 Single binary **web application generator** for Go. 
 
 **Creates project boilerplate** and gives the ability to focus on the implementation of app functionality.
@@ -47,3 +49,30 @@ Single binary **web application generator** for Go.
  4. `make run` - will build and run container with code
  5. `make test` - to run container with tests
  6. `make lint` - to run linter for source code
+ 
+ #### Structure
+ 
+ Application generated with **go-wagen** will have following structure:
+ ```
+ ├── Makefile
+ ├── cmd
+ │   └── example
+ │       └── example.go - app entrypoint
+ ├── config - config presets for each env of default pipline
+ │   ├── app.dev.yml
+ │   ├── app.local.yml
+ │   └── app.yml
+ ├── deploy
+ │   ├── Dockerfile
+ │   └── docker-compose.yml
+ ├── go.mod
+ ├── internal - for shared internal tools
+ ├── server
+ │   ├── handlers
+ │   │   ├── hello.go
+ │   │   └── ping.go
+ │   └── middleware
+ │       └── log.go
+ ├── storage - db/storages
+ └── vendor - downloaded modules
+```
