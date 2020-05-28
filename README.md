@@ -3,7 +3,7 @@ Single binary **web application generator** for Go.
 
 **Creates project boilerplate** and gives the ability to focus on the implementation of app functionality.
 
-####Generates:
+#### Generates:
  * project layout, according to community best practices
  * Makefile for wrapping project related routines 
  * Dockerfile and docker-compose for local development
