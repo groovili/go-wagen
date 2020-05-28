@@ -1,22 +1,22 @@
 # go-wagen
 Single binary **web application generator** for Go. 
 
-**Creates project boilerplate** and gives ability to focus on implementation of app functionality.
+**Creates project boilerplate** and gives the ability to focus on the implementation of app functionality.
 
-Generates:
+####Generates:
  * project layout, according to community best practices
  * Makefile for wrapping project related routines 
  * Dockerfile and docker-compose for local development
  * containers for code, tests and [golangci-lint](https://github.com/golangci/golangci-lint)
- * configuration with [viper](https://github.com/spf13/viper)
+ * configuration management with [viper](https://github.com/spf13/viper)
  * logging with [logrus](http://github.com/sirupsen/logrus) or [zap](https://github.com/uber-go/zap)
  * routing with [gorilla/mux](https://github.com/gorilla/mux) or [chi](github.com/go-chi/chi)
  * default health check, http handler and logger middleware
  
  **go-wagen is a starter pack** for typical web application. 
  
- It doesn't aim to generalize whole project workflow,
- push framework or architecture. Consists of framework agnostic components which are common in  most of the applications.
+ It doesn't aim to generalize the whole project workflow, push framework, or architecture.
+ Consists of framework-agnostic components that are common in most of the applications.
  
  All contributions, issues, requests or feedback are warmly welcome.
  
