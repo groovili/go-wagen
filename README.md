@@ -24,7 +24,8 @@ Single binary **web application generator** for Go.
  
  Install pre-built binary on [releases page](https://github.com/groovili/go-wagen/releases):
  
- 1. `curl`
+ 1. `curl -LJO https://github.com/groovili/go-wagen/releases/download/latest/go-wagen-osx.tar.gz`
+ 2. `tar -f go-wagen-osx.tar.gz -x`
  2. `./go-wagen --path=/absoule/path/to/project`
  
  or build from source code:
